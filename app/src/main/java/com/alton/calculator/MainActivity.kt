@@ -4,31 +4,35 @@ import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.view.View
 import android.widget.Button
-import android.widget.EditText
-import android.widget.TextView
-import java.lang.NumberFormatException
+import androidx.lifecycle.Observer
+import androidx.lifecycle.ViewModelProvider
 import kotlinx.android.synthetic.main.activity_main.*
 
-private const val STATE_PENDING_OPERATION = "PendingOperation"
-private const val STATE_OPERAND1 = "Operand1"
-private const val STATE_OPERAND1_STORED = "Operand1_Stored"
+//private const val STATE_PENDING_OPERATION = "PendingOperation"
+//private const val STATE_OPERAND1 = "Operand1"
+//private const val STATE_OPERAND1_STORED = "Operand1_Stored"
 
 class MainActivity : AppCompatActivity() {
 //    private lateinit var result: EditText//If you try to access this property before it is initialized, it will throw an exception
 //    private lateinit var newNumber: EditText
 //    private val displayOperation by lazy(LazyThreadSafetyMode.NONE) { findViewById<TextView>(R.id.operation) }
 
-    // Variables to hold the operands and type of calculation
-    private var operand1: Double? = null
-    private var pendingOperation = "="
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+        val viewModel = ViewModelProvider(this).get(CalculatorViewModel::class.java)
+        viewModel.stringResult.observe(
+            this,
+            Observer { stringResult -> result.setText(stringResult) })
+        viewModel.stringNewNumber.observe(
+            this,
+            Observer { stringNumber -> newNumber.setText(stringNumber) })
+        viewModel.stringOperation.observe(
+            this,
+            Observer { stringOperation -> operation.text = stringOperation })
 
         val listener = View.OnClickListener { v ->
-            val b = v as Button
-            newNumber.append(b.text)
+            viewModel.digitPressed((v as Button).text.toString())
         }
 
         button0.setOnClickListener(listener)
@@ -44,15 +48,7 @@ class MainActivity : AppCompatActivity() {
         buttonDot.setOnClickListener(listener)
 
         val opListener = View.OnClickListener { v ->
-            val op = (v as Button).text.toString()
-            try {
-                val value = newNumber.text.toString().toDouble()
-                performOperation(value, op)
-            } catch (e: NumberFormatException) {
-                newNumber.setText("")
-            }
-            pendingOperation = op
-            operation.text = pendingOperation
+            viewModel.operandPressed((v as Button).text.toString())
         }
 
         buttonEquals.setOnClickListener(opListener)
@@ -61,19 +57,8 @@ class MainActivity : AppCompatActivity() {
         buttonMinus.setOnClickListener(opListener)
         buttonPlus.setOnClickListener(opListener)
 
-        buttonNeg.setOnClickListener { view ->
-            val value = newNumber.text.toString()
-            if (value.isEmpty()) {
-                newNumber.setText("-")
-            } else {
-                try {
-                    var doubleValue = newNumber.text.toString().toDouble()
-                    doubleValue *= -1
-                    newNumber.setText(doubleValue.toString())
-                } catch (e: NumberFormatException) {
-                    newNumber.setText("")
-                }
-            }
+        buttonNeg.setOnClickListener {
+            viewModel.negPressed()
         }
 
         buttonClear.setOnClickListener {
@@ -82,47 +67,25 @@ class MainActivity : AppCompatActivity() {
 
     }
 
-    override fun onSaveInstanceState(outState: Bundle) {
-        super.onSaveInstanceState(outState)
-        if (operand1 != null) {
-            outState.putDouble(STATE_OPERAND1, operand1!!)
-            outState.putBoolean(STATE_OPERAND1_STORED, true)
-        }
-        outState.putString(STATE_PENDING_OPERATION, pendingOperation)
-    }
+//    override fun onSaveInstanceState(outState: Bundle) {
+//        super.onSaveInstanceState(outState)
+//        if (operand1 != null) {
+//            outState.putDouble(STATE_OPERAND1, operand1!!)
+//            outState.putBoolean(STATE_OPERAND1_STORED, true)
+//        }
+//        outState.putString(STATE_PENDING_OPERATION, pendingOperation)
+//    }
+//
+//    override fun onRestoreInstanceState(savedInstanceState: Bundle) {
+//        super.onRestoreInstanceState(savedInstanceState)
+//        operand1 = if (savedInstanceState.getBoolean(STATE_OPERAND1_STORED, false)) {
+//            savedInstanceState.getDouble(STATE_OPERAND1)
+//        } else {
+//            null
+//        }
+//        pendingOperation = savedInstanceState.getString(STATE_PENDING_OPERATION).toString()
+//        operation.text = pendingOperation
+//    }
 
-    override fun onRestoreInstanceState(savedInstanceState: Bundle) {
-        super.onRestoreInstanceState(savedInstanceState)
-        operand1 = if (savedInstanceState.getBoolean(STATE_OPERAND1_STORED, false)) {
-            savedInstanceState.getDouble(STATE_OPERAND1)
-        } else {
-            null
-        }
-        pendingOperation = savedInstanceState.getString(STATE_PENDING_OPERATION).toString()
-        operation.text = pendingOperation
-    }
 
-    private fun performOperation(value: Double, operation: String) {
-        if (operand1 == null) {
-            operand1 = value
-        } else {
-            if (pendingOperation == "=") {
-                pendingOperation = operation
-            }
-
-            when (pendingOperation) {
-                "=" -> operand1 = value
-                "/" -> operand1 = if (value == 0.0) {
-                    Double.NaN   // handle attempt to divide by zero
-                } else {
-                    operand1!! / value
-                }
-                "*" -> operand1 = operand1!! * value
-                "-" -> operand1 = operand1!! - value
-                "+" -> operand1 = operand1!! + value
-            }
-        }
-        result.setText(operand1.toString())
-        newNumber.setText("")
-    }
 }
